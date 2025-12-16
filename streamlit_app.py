@@ -1,190 +1,231 @@
+import streamlit as st
+import folium
+import random
+from streamlit_folium import st_folium
 from typing import List
 
-import matplotlib.pyplot as plt
-import pandas as pd
-import streamlit as st
+# Import LOGIKA dari backend.py
+from backend import create_example_graph, compute_multi_stop_route, Graph
 
-from main import Graph, compute_multi_stop_route, create_example_graph
+# --- DATA SKENARIO DIPERBARUI (INCLUDE SPBU BARU) ---
+def get_scenario_details():
+    return {
+        "Manual (Pilih Sendiri)": {
+            "targets": [],
+            "desc": "Mode Manual. Anda memiliki kendali penuh untuk menentukan SPBU mana yang akan dikunjungi oleh Mobil Tangki.",
+            "insight": "Gunakan mode ini untuk simulasi rute bebas sesuai keinginan."
+        },
+        
+        "1. 🚨 Stok Pertalite Kritis (Area Padat)": {
+            "targets": ["SPBU Kebun Sayur", "SPBU Karang Anyar", "SPBU Gunung Malang"],
+            "desc": "Kondisi: Stok Pertalite HABIS di area pemukiman padat (Balikpapan Barat & Tengah).",
+            "insight": "💡 **Prioritas:** Segera suplai ke area padat penduduk untuk mencegah kemacetan akibat antrean."
+        },
+        
+        "2. 💎 Stok Pertamax Menipis (Area Bisnis)": {
+            "targets": ["SPBU Markoni", "SPBU MT Haryono (Damai)", "SPBU Ruhui Rahayu (Dome)"], # Update
+            "desc": "Kondisi: Stok Pertamax menipis di jalur protokol Sudirman dan kawasan perkantoran Dome/Ring Road.",
+            "insight": "💡 **Strategi:** Prioritas jalur bisnis yang memiliki daya beli tinggi."
+        },
+        
+        "3. 🌗 Suplai Parsial (Radius Dalam Kota)": {
+            "targets": ["SPBU Karang Anyar", "SPBU Markoni", "SPBU Km 3 (Soekarno Hatta)"], # Update
+            "desc": "Kondisi: Armada terbatas. Pengiriman hanya dilakukan di radius dekat Integrated Terminal (Depot).",
+            "insight": "💡 **Efisiensi:** Menghindari rute jauh (Kilo 15/Teritip) untuk memaksimalkan jumlah ritase jarak pendek."
+        },
+        
+        "4. 🎲 Order Mendadak (Acak & Terbatas)": {
+            "targets": "RANDOM_LIMITED", 
+            "desc": "Kondisi: Sisa muatan di tangki terbatas. Dispatcher menugaskan pengiriman ke 3 titik acak.",
+            "insight": "💡 **Uji Algoritma:** Menguji fleksibilitas sistem dalam menangani rute yang tidak terduga."
+        },
+        
+        "5. 📉 Stok Depot Terbatas (Jalur Industri)": {
+            "targets": ["SPBU Kariangau (Industri)", "SPBU Km 13", "SPBU Km 15 (Karang Joang)"], # Update
+            "desc": "Kondisi: Prioritas utama diberikan ke Jalur Logistik & Kawasan Industri Kariangau (KIK).",
+            "insight": "💡 **Heavy Duty:** Melayani truk kontainer dan alat berat di poros Samarinda."
+        },
+        
+        "6. ✈️ Penyangga Bandara & Wisata": {
+            "targets": ["SPBU COCO Sepinggan", "SPBU Batakan", "SPBU Manggar"], # Update
+            "desc": "Penyaluran ke jalur Timur: Bandara SAMS, Pantai Batakan, hingga Manggar.",
+            "insight": "💡 **Jarak Jauh:** Rute Long Haul menyusuri garis pantai Timur Balikpapan."
+        },
+        
+        "7. 🔄 Pengalihan Arus (Via Ring Road)": {
+            "targets": ["SPBU MT Haryono (Damai)", "SPBU Ruhui Rahayu (Dome)", "SPBU Syarifuddin Yoes"], # Update
+            "desc": "Menghindari kemacetan parah di pusat kota (Rapak) dengan menggunakan Jalan Lingkar Selatan.",
+            "insight": "💡 **Waktu vs Jarak:** Jarak tempuh lebih jauh, namun waktu tempuh lebih singkat."
+        },
+        
+        "8. 🌧️ Kontinjensi Banjir (Jalur Pesisir)": {
+            "targets": ["SPBU Markoni", "SPBU Stalkuda", "SPBU Gunung Malang"],
+            "desc": "Jl. MT Haryono banjir besar. Truk dialihkan lewat jalur pesisir (Jalan Jend. Sudirman).",
+            "insight": "💡 **Safety:** Mengutamakan keselamatan aset daripada kecepatan rute."
+        },
+        
+        "9. ⛽ Distribusi Ujung Kota (Remote Area)": {
+            "targets": ["SPBU Teritip", "SPBU Km 15 (Karang Joang)"],
+            "desc": "Membuang sisa muatan terakhir ke titik paling ujung Utara dan Timur.",
+            "insight": "💡 **Navigasi:** Menguji kemampuan algoritma mencari jalan pintas antar wilayah pinggiran."
+        },
+        
+        "10. ⚠️ Siaga SATGAS (Peak Season)": {
+            "targets": "ALL",
+            "desc": "Kondisi Siaga (Lebaran/Nataru). Permintaan melonjak serentak. Semua armada dikerahkan ke SEMUA titik.",
+            "insight": "💡 **Stress Test:** Uji beban maksimal algoritma Traveling Salesman Problem (TSP)."
+        }
+    }
 
-
-def _get_graph() -> Graph:
-    # Cache graf agar tidak dibuat ulang setiap interaksi
-    @st.cache_resource(show_spinner=False)
-    def _build() -> Graph:
-        return create_example_graph()
-
-    return _build()
-
-
-def _compute_route(graph: Graph, start: str, end: str, algorithm: str):
-    solver = graph.dijkstra if algorithm == "Dijkstra" else graph.astar
-    cost, path = solver(start, end)
-    return cost, path
-
-def _collect_unique_edges(graph: Graph) -> List[tuple[str, str]]:
-    seen = set()
-    edges = []
-    for source, neighbors in graph.edges.items():
-        for target, _ in neighbors:
-            key = tuple(sorted((source, target)))
-            if key in seen:
-                continue
-            seen.add(key)
-            edges.append((source, target))
-    return edges
-
-
-def _render_graph(graph: Graph, highlight_paths: List[List[str]]):
-    edges = _collect_unique_edges(graph)
-    fig, ax = plt.subplots(figsize=(8, 6))
-    ax.set_title("Graf Distribusi (skala sederhana)")
-
-    for node_a, node_b in edges:
-        coord_a = graph.coordinates.get(node_a)
-        coord_b = graph.coordinates.get(node_b)
-        if not coord_a or not coord_b:
-            continue
-        ax.plot([coord_a[0], coord_b[0]], [coord_a[1], coord_b[1]], color="#b0b0b0", linewidth=1.5, zorder=1)
-
-    colors = ["#ff1c1c", "#ffa500", "#1c9cff", "#7ac70c", "#8a2be2"]
-    for idx, path in enumerate(highlight_paths):
-        coords = [graph.coordinates.get(node) for node in path]
-        if any(coord is None for coord in coords) or len(coords) < 2:
-            continue
-        xs = [c[0] for c in coords]
-        ys = [c[1] for c in coords]
-        ax.plot(xs, ys, color=colors[idx % len(colors)], linewidth=3, zorder=2)
-
-    for name, coord in graph.coordinates.items():
-        node_type = "SPBU" if name.startswith("SPBU") else ("Depot" if "Depot" in name else "Simpang")
-        if node_type == "Depot":
-            color = "#009900"
-            size = 120
-        elif node_type == "SPBU":
-            color = "#0066cc"
-            size = 90
-        else:
-            color = "#666666"
-            size = 70
-        ax.scatter(coord[0], coord[1], s=size, color=color, edgecolors="white", linewidths=0.8, zorder=3)
-        ax.text(coord[0], coord[1] + 0.0015, name, fontsize=9, ha="center", va="bottom", zorder=4)
-
-    ax.set_xlabel("X")
-    ax.set_ylabel("Y")
-    ax.grid(True, alpha=0.3)
-    ax.set_aspect("equal", adjustable="datalim")
-    ax.margins(x=0.1, y=0.12)
-    fig.tight_layout()
-    return fig
-
-
-st.set_page_config(page_title="Distribusi BBM Balikpapan", layout="wide")
-st.title("Optimasi Jalur Distribusi BBM")
-
-st.markdown(
-    """
-    Aplikasi ini membandingkan algoritma **Dijkstra** dan **A*** untuk menentukan rute tercepat
-    dari depot ke SPBU tujuan. Data koordinat dan waktu tempuh masih berupa contoh—ganti dengan
-    data lapangan agar hasil lebih akurat.
-    """
-)
-
-graph = _get_graph()
-all_locations = sorted(graph.nodes)
-start_node = next((name for name in all_locations if "Depot" in name), all_locations[0])
-dest_options = [name for name in all_locations if name != start_node]
-
-if "highlight_routes" not in st.session_state:
-    st.session_state["highlight_routes"] = []
-
-with st.sidebar:
-    st.header("Pengaturan")
-    algorithm = st.radio("Algoritma", ["Dijkstra", "A*"])
-    single_destination = st.selectbox("Tujuan tunggal", dest_options, index=0 if dest_options else None)
-    multi_destinations = st.multiselect("Tujuan jamak", dest_options)
-    enable_multi_stop = st.checkbox("Hitung rute multi tujuan (sekali jalan)")
-    return_to_start = st.checkbox("Kembali ke depot setelah distribusi", value=False)
-
-    st.caption("Hint: gunakan tombol di bawah untuk menjalankan perhitungan.")
-    run_single = st.button("Cari rute tunggal")
-    run_multi = st.button("Cari rute jamak")
-
-col_result, col_map = st.columns([1, 1])
-
-with col_result:
-    st.subheader("Hasil Perhitungan")
-
-    if run_single:
-        cost, path = _compute_route(graph, start_node, single_destination, algorithm)
-        if cost == float("inf") or not path:
-            st.session_state["highlight_routes"] = []
-            st.error(f"Tidak ada rute dari {start_node} ke {single_destination}.")
-        else:
-            st.session_state["highlight_routes"] = [path]
-            st.success(f"{algorithm} {start_node} → {single_destination}")
-            st.write({"rute": path, "total waktu (menit)": round(cost, 2)})
-
-    if run_multi:
-        if not multi_destinations:
-            st.warning("Pilih minimal satu tujuan di daftar 'Tujuan jamak'.")
-        else:
-            rows = []
-            highlights = []
-            if enable_multi_stop:
-                try:
-                    total_cost, route_path = compute_multi_stop_route(
-                        graph,
-                        start_node,
-                        multi_destinations,
-                        algorithm,
-                        return_to_start=return_to_start,
-                    )
-                except ValueError as exc:
-                    st.error(str(exc))
-                    st.session_state["highlight_routes"] = []
-                else:
-                    if total_cost == float("inf") or not route_path:
-                        st.error("Tidak ditemukan rute yang mencakup semua tujuan.")
-                        st.session_state["highlight_routes"] = []
-                    else:
-                        st.success(
-                            f"Rute multi tujuan ({algorithm}) dengan total waktu {total_cost:.1f} menit"
-                        )
-                        st.write({"rute": route_path})
-                        st.session_state["highlight_routes"] = [route_path]
-                        rows.append(
-                            {
-                                "Tujuan": " → ".join([start_node] + multi_destinations + ([start_node] if return_to_start else [])),
-                                "Status": "OK",
-                                "Rute": route_path,
-                                "Total waktu (menit)": round(total_cost, 2),
-                            }
-                        )
-                        st.dataframe(pd.DataFrame(rows))
-            else:
-                for dest in multi_destinations:
-                    cost, path = _compute_route(graph, start_node, dest, algorithm)
-                    status = "OK"
-                    if cost == float("inf") or not path:
-                        status = "Tidak tersedia"
-                    rows.append(
-                        {
-                            "Tujuan": dest,
-                            "Status": status,
-                            "Rute": path if status == "OK" else [],
-                            "Total waktu (menit)": round(cost, 2) if status == "OK" else None,
-                        }
-                    )
-                    if status == "OK":
-                        highlights.append(path)
-                st.dataframe(pd.DataFrame(rows))
-                st.session_state["highlight_routes"] = highlights
-
-with col_map:
-    st.subheader("Visualisasi Graf")
-    if not graph.coordinates:
-        st.info("Belum ada koordinat yang terekam pada graf.")
+# --- VISUALISASI PETA ---
+def _render_map(graph: Graph, highlight_routes: List[List[str]]):
+    if not graph.coordinates: return None
+    
+    folium_coords = {name: [lat, lon] for name, (lon, lat) in graph.coordinates.items()}
+    
+    if folium_coords:
+        lats = [c[0] for c in folium_coords.values()]
+        lons = [c[1] for c in folium_coords.values()]
+        center_map = [sum(lats)/len(lats), sum(lons)/len(lons)]
     else:
-        fig = _render_graph(graph, st.session_state.get("highlight_routes", []))
-        st.pyplot(fig)
+        center_map = [-1.25, 116.83]
 
+    m = folium.Map(location=center_map, zoom_start=12)
+
+    # Layer Jalan
+    seen_edges = set()
+    for u, neighbors in graph.edges.items():
+        for v, _ in neighbors:
+            edge_key = tuple(sorted((u, v)))
+            if edge_key not in seen_edges:
+                if u in folium_coords and v in folium_coords:
+                    folium.PolyLine(
+                        [folium_coords[u], folium_coords[v]], 
+                        color="#6c757d", weight=3, opacity=0.4, dash_array='5,5'
+                    ).add_to(m)
+                seen_edges.add(edge_key)
+
+    # Layer Rute
+    colors = ["#E31B23", "#005DAA", "#5CB85C"] 
+    for idx, path in enumerate(highlight_routes):
+        route_coords = [folium_coords[node] for node in path if node in folium_coords]
+        if len(route_coords) > 1:
+            folium.PolyLine(
+                route_coords, color=colors[idx % len(colors)], 
+                weight=6, opacity=1.0, tooltip=f"Ritase {idx+1}"
+            ).add_to(m)
+
+    # Layer Marker
+    for name, coord in folium_coords.items():
+        if "Depot" in name: 
+            icon_c, icon_n = "black", "industry"
+        elif "SPBU" in name: 
+            icon_c, icon_n = "red", "gas-pump"
+        else: 
+            icon_c, icon_n = "gray", "diamond"
+
+        folium.Marker(
+            location=coord, popup=name, tooltip=name, 
+            icon=folium.Icon(color=icon_c, icon=icon_n, prefix="fa")
+        ).add_to(m)
+    return m
+
+# --- SETUP APLIKASI ---
+st.set_page_config(page_title="SIMANDIS Pertamina", layout="wide", page_icon="⛽")
+st.title("⛽ SIMANDIS (Sistem Manajemen Distribusi BBM)")
+st.markdown("**Integrated Terminal Balikpapan** | Dashboard Optimasi Rute Mobil Tangki")
+
+# Load Graph
+@st.cache_resource
+def get_graph(): return create_example_graph()
+
+graph = get_graph()
+all_nodes = sorted(list(graph.nodes))
+all_spbus = [n for n in all_nodes if "SPBU" in n]
+start_node = "Depot IT Balikpapan"
+
+# --- SIDEBAR ---
+with st.sidebar:
+    st.header("🎛️ Operasional Ritase")
+    algo = st.radio("Metode Hitung", ["Dijkstra (Jarak Terpendek)", "A* (Heuristik)"], horizontal=True)
+    st.divider()
+
+    # PILIHAN SKENARIO
+    scenario_data = get_scenario_details()
+    
+    def update_scenario_state():
+        sel = st.session_state.scenario_selector
+        data = scenario_data[sel]
+        
+        # LOGIKA TARGET SKENARIO
+        if data["targets"] == "ALL":
+            st.session_state.selected_targets = all_spbus
+        elif data["targets"] == "RANDOM_LIMITED":
+            st.session_state.selected_targets = random.sample(all_spbus, 3) if len(all_spbus) >= 3 else all_spbus
+        elif sel == "Manual (Pilih Sendiri)":
+            st.session_state.selected_targets = []
+        else:
+            valid_targets = [t for t in data["targets"] if t in all_spbus]
+            st.session_state.selected_targets = valid_targets
+
+    selected_scenario = st.selectbox(
+        "Pilih Skenario Lapangan:", 
+        list(scenario_data.keys()), 
+        key="scenario_selector", 
+        on_change=update_scenario_state
+    )
+    
+    # INFO BOX
+    desc = scenario_data[selected_scenario]["desc"]
+    st.info(f"{desc}")
+
+    if "selected_targets" not in st.session_state: st.session_state.selected_targets = []
+    
+    targets = st.multiselect("Lembaga Penyalur (SPBU):", options=all_spbus, key="selected_targets")
+    round_trip = st.checkbox("Kembali ke Depot (Round Trip)?", value=True)
+    
+    st.divider()
+    
+    if st.button("🚀 Kalkulasi Rute", type="primary", use_container_width=True):
+        if targets:
+            with st.spinner("Menghitung rute optimal..."):
+                try:
+                    algo_name = algo.split(" ")[0]
+                    cost, path = compute_multi_stop_route(graph, start_node, targets, algo_name, return_to_start=round_trip)
+                    st.session_state.routes = [path]
+                    st.session_state.info = {"cost": cost, "path": path, "scenario": selected_scenario}
+                except Exception as e: st.error(f"Error: {e}")
+        else: st.warning("Pilih tujuan dulu.")
+
+# --- DASHBOARD UTAMA ---
+col1, col2 = st.columns([2, 1])
+
+if "routes" not in st.session_state: st.session_state.routes = []
+if "info" not in st.session_state: st.session_state.info = None
+
+with col1:
+    st.subheader("🗺️ Peta Monitoring")
+    map_viz = _render_map(graph, st.session_state.routes)
+    if map_viz: st_folium(map_viz, width="100%", height=550)
+
+with col2:
+    st.subheader("📊 Statistik Ritase")
+    res = st.session_state.info
+    if res:
+        kpi1, kpi2 = st.columns(2)
+        kpi1.metric("Est. Waktu Putaran", f"{res['cost']:.1f} min")
+        kpi2.metric("Titik Drop", len(targets))
+        
+        sel_scen = res.get("scenario", "Manual")
+        if sel_scen in scenario_data:
+            st.success(scenario_data[sel_scen]["insight"])
+        
+        st.markdown("##### 📍 Timeline Perjalanan")
+        path = res['path']
+        for i, node in enumerate(path):
+            if i == 0: st.markdown(f"🏭 **BERANGKAT**: {node}")
+            elif i == len(path)-1: st.markdown(f"🏁 **TIBA**: {node}")
+            elif "SPBU" in node and node in targets: st.markdown(f"⛽ **BONGKAR BBM**: {node}")
+            else: st.caption(f"⬇️ *Via {node}*")
+    else:
+        st.info("Pilih skenario di panel kiri.")
