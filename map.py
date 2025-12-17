@@ -3,17 +3,24 @@ import networkx as nx
 import folium
 from backend import Graph, location_coords
 
-def load_balikpapan_graph(place_name="Balikpapan, Indonesia"):
-    """Load Balikpapan road network from OpenStreetMap, filtered for truck access."""
-    custom_filter = (
-        '["highway"]["area"!~"yes"]["access"!~"private"]["highway"!~"abandoned|bridleway|bus_guideway|construction|corridor|cycleway|elevator|footway|path|pedestrian|planned|platform|proposed|raceway|steps|track"]'
-        '["highway"!~"abandoned|bridleway|bus_guideway|construction|corridor|cycleway|elevator|footway|path|pedestrian|planned|platform|proposed|raceway|steps|track"]'
-    )
+def load_balikpapan_graph(place_name="Balikpapan, Indonesia", vehicle_type="car"):
+    """Load Balikpapan road network from OpenStreetMap, filtered based on vehicle type."""
+    if vehicle_type.lower() == "truck":
+        network_type = "drive"
+        custom_filter = (
+            '["highway"~"motorway|trunk|primary|secondary"]["area"!~"yes"]["access"!~"private"]["highway"!~"residential|living_street|unclassified|service"]'
+        )
+    else:
+        network_type = "drive"
+        custom_filter = (
+            '["highway"]["area"!~"yes"]["access"!~"private"]["highway"!~"abandoned|bridleway|bus_guideway|construction|corridor|cycleway|elevator|footway|path|pedestrian|planned|platform|proposed|raceway|steps|track"]'
+            '["highway"!~"abandoned|bridleway|bus_guideway|construction|corridor|cycleway|elevator|footway|path|pedestrian|planned|platform|proposed|raceway|steps|track"]'
+        )
 
     G = ox.graph_from_place(
         place_name,
-        network_type="drive",
-        simplify=True,
+        network_type=network_type,
+        simplify=False,  # More detailed but smaller graph
         custom_filter=custom_filter
     )
 

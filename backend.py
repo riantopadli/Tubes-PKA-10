@@ -79,93 +79,66 @@ def haversine_km(coord1: Tuple[float, float], coord2: Tuple[float, float]) -> fl
     return 6371.0 * c
 
 location_coords: Dict[str, Tuple[float, float]] = {
-    # IT (Integrated Terminal)
     "Depot IT Balikpapan": (116.824915, -1.252753),
-
-    # Hub / Simpang Utama
     "Simpang Karang Jati": (116.833500, -1.248500),
-    "Simpang Rapak": (116.835100, -1.241800), 
+    "Simpang Rapak": (116.835100, -1.241800),
     "Simpang Gunung Sari": (116.835400, -1.259100),
-    "Simpang Balikpapan Baru": (116.855000, -1.235000), 
+    "Simpang Balikpapan Baru": (116.8592815, -1.2448177),
     "Simpang BP/Sudirman": (116.845000, -1.265000),
     "Simpang Bandara Sepinggan": (116.890000, -1.268000),
-    "Simpang Km 5": (116.850000, -1.220000), 
-    "Simpang Kariangau": (116.848000, -1.200000), # Percabangan ke Industri
-
-    # SPBU Area Barat & Kota Lama
-    "SPBU Karang Anyar": (116.828692, -1.241598),
-    "SPBU Kebun Sayur": (116.830500, -1.245000),
-    
-    # SPBU Area Tengah & Protokol
-    "SPBU Gunung Malang": (116.846183, -1.266942),
+    "Simpang Km 5": (116.8855443, -1.1655897),
+    "Simpang Kariangau": (116.848000, -1.200000),
+    "SPBU Karang Anyar": (116.8287548, -1.241685),
+    "SPBU Kebun Sayur": (116.82258429525132, -1.234234503558596),
+    "SPBU Gunung Malang": (116.8462635251558, -1.2669178826321115),
     "SPBU Gunung Guntur": (116.846764, -1.251218),
-    "SPBU Markoni": (116.852000, -1.269000),
-    "SPBU MT Haryono (Damai)": (116.865000, -1.245000),
-    "SPBU Ruhui Rahayu (Dome)": (116.875000, -1.248000), # TAMBAHAN
-    
-    # SPBU Area Timur
-    "SPBU Stalkuda": (116.865000, -1.268000),
-    "SPBU COCO Sepinggan": (116.885000, -1.267000), # TAMBAHAN (Depan Bandara)
-    "SPBU Sepinggan Raya": (116.895000, -1.266000),
-    "SPBU Batakan": (116.920000, -1.260000),
-    "SPBU Manggar": (116.935000, -1.245000), # TAMBAHAN
+    "SPBU Markoni": (116.85953763227289, -1.2647298557158149),
+    "SPBU MT Haryono (Damai)": (116.8595571, -1.2649013),
+    "SPBU Ruhui Rahayu (Dome)": (116.87251674242106, -1.242597870423533),
+    "SPBU Stalkuda": (116.86261315365263, -1.2748675591027794),
+    "SPBU COCO Sepinggan": (116.89451084260867, -1.2608831361016632),
+    "SPBU Batakan": (116.93810821587371, -1.2458636032513934),
+    "SPBU Manggar": (116.94991304021711, -1.2357927832542113),
     "SPBU Teritip": (116.960000, -1.230000),
-    
-    # SPBU Area Utara (Logistik Kilo)
-    "SPBU Km 3 (Soekarno Hatta)": (116.840000, -1.230000), # TAMBAHAN
+    "SPBU Km 3 (Soekarno Hatta)": (116.840000, -1.230000),
     "SPBU Km 4 Batu Ampar": (116.845000, -1.225000),
-    "SPBU Kariangau (Industri)": (116.820000, -1.180000), # TAMBAHAN
-    "SPBU Km 9": (116.860000, -1.190000),
-    "SPBU Km 13": (116.865000, -1.170000), # TAMBAHAN
-    "SPBU Km 15 (Karang Joang)": (116.870000, -1.150000),
-    
-    # Jalur Tembus
-    "SPBU Syarifuddin Yoes": (116.880000, -1.255000),
+    "SPBU Kariangau (Industri)": (116.8361016915729, -1.1847185836663066),
+    "SPBU Km 9": (116.8818081, -1.1974651),
+    "SPBU Km 13": (116.82842670135615, -1.1591519550082776),
+    "SPBU Km 15 (Karang Joang)": (116.877873, -1.1527017),
+    "SPBU Gunung Bahagia": (116.87904978046626, -1.250044845154681),
+    "SPBU Pertamina Sebelah Grand City": (116.87061320335893, -1.2240726210426207),
+    "SPBU Sumber Rejo": (116.87251674242106, -1.242597870423533),
 }
 
 roads: List[Tuple[str, str, float]] = [
-    # Depot -> Rapak Area
     ("Depot IT Balikpapan", "Simpang Karang Jati", 3.0),
     ("Simpang Karang Jati", "SPBU Kebun Sayur", 2.0),
     ("Simpang Karang Jati", "SPBU Karang Anyar", 2.5),
     ("Simpang Karang Jati", "Simpang Rapak", 3.0),
-    
-    # Rapak -> Menyebar
     ("Simpang Rapak", "SPBU Gunung Guntur", 4.0),
-    ("Simpang Rapak", "SPBU Km 3 (Soekarno Hatta)", 3.0), # Ke Utara
-    ("Simpang Rapak", "Simpang Gunung Sari", 5.0), # Ke Kota
-    
-    # Jalur Utara (Kilo)
+    ("Simpang Rapak", "SPBU Km 3 (Soekarno Hatta)", 3.0),
+    ("Simpang Rapak", "Simpang Gunung Sari", 5.0),
     ("SPBU Km 3 (Soekarno Hatta)", "Simpang Km 5", 2.0),
     ("Simpang Km 5", "SPBU Km 4 Batu Ampar", 1.5),
-    ("Simpang Km 5", "Simpang Kariangau", 8.0), # Menuju percabangan Kariangau
+    ("Simpang Km 5", "Simpang Kariangau", 8.0),
     ("Simpang Kariangau", "SPBU Kariangau (Industri)", 5.0),
     ("Simpang Kariangau", "SPBU Km 9", 4.0),
     ("SPBU Km 9", "SPBU Km 13", 5.0),
     ("SPBU Km 13", "SPBU Km 15 (Karang Joang)", 3.0),
-    
-    # Jalur Kota & Selatan
     ("Simpang Gunung Sari", "SPBU Gunung Malang", 3.0),
     ("SPBU Gunung Malang", "Simpang BP/Sudirman", 2.0),
     ("Simpang BP/Sudirman", "SPBU Markoni", 3.0),
     ("SPBU Markoni", "SPBU Stalkuda", 4.0),
-    
-    # Jalur Timur (Pesisir)
     ("SPBU Stalkuda", "Simpang Bandara Sepinggan", 7.0),
     ("Simpang Bandara Sepinggan", "SPBU COCO Sepinggan", 2.0),
-    ("SPBU COCO Sepinggan", "SPBU Sepinggan Raya", 2.0),
-    ("SPBU Sepinggan Raya", "SPBU Batakan", 5.0),
+    ("SPBU COCO Sepinggan", "SPBU Batakan", 7.0),
     ("SPBU Batakan", "SPBU Manggar", 4.0),
     ("SPBU Manggar", "SPBU Teritip", 6.0),
-    
-    # Jalur Ring Road (Tembus)
     ("Simpang Km 5", "Simpang Balikpapan Baru", 4.0),
     ("Simpang Balikpapan Baru", "SPBU MT Haryono (Damai)", 3.0),
     ("SPBU MT Haryono (Damai)", "SPBU Ruhui Rahayu (Dome)", 4.0),
-    ("SPBU Ruhui Rahayu (Dome)", "SPBU Syarifuddin Yoes", 3.0),
-    ("SPBU Syarifuddin Yoes", "Simpang Bandara Sepinggan", 4.0),
-    
-    # Koneksi tambahan
+    ("SPBU Ruhui Rahayu (Dome)", "Simpang Bandara Sepinggan", 4.0),
     ("SPBU MT Haryono (Damai)", "SPBU Stalkuda", 5.0),
 ]
 

@@ -4,15 +4,15 @@ import map as map_utils
 from backend import Graph, location_coords, compute_multi_stop_route
 
 @st.cache_resource(show_spinner=True)
-def get_real_time_graph():
+def get_real_time_graph(vehicle_type="car"):
     with st.spinner("🔄 Loading Balikpapan road network..."):
-        osm_graph = map_utils.load_balikpapan_graph()
+        osm_graph = map_utils.load_balikpapan_graph(vehicle_type=vehicle_type)
         custom_graph = map_utils.convert_osm_to_custom_graph(osm_graph)
         mapped_nodes = map_utils.get_nearest_nodes(osm_graph, location_coords)
     return osm_graph, custom_graph, mapped_nodes
 
-def navigate_real_time_route(start_location, destinations, algorithm="Dijkstra", return_to_start=False):
-    osm_graph, custom_graph, mapped_nodes = get_real_time_graph()
+def navigate_real_time_route(start_location, destinations, algorithm="Dijkstra", return_to_start=False, vehicle_type="car"):
+    osm_graph, custom_graph, mapped_nodes = get_real_time_graph(vehicle_type=vehicle_type)
 
     if start_location not in mapped_nodes:
         raise ValueError(f"Start location '{start_location}' not found")
@@ -40,8 +40,8 @@ def navigate_real_time_route(start_location, destinations, algorithm="Dijkstra",
         'mapped_nodes': mapped_nodes
     }
 
-def navigate_multi_stop_route(start_location, destinations, algorithm="Dijkstra", return_to_start=False):
-    return navigate_real_time_route(start_location, destinations, algorithm, return_to_start)
+def navigate_multi_stop_route(start_location, destinations, algorithm="Dijkstra", return_to_start=False, vehicle_type="car"):
+    return navigate_real_time_route(start_location, destinations, algorithm, return_to_start, vehicle_type=vehicle_type)
 
 def create_navigation_map(navigation_result, targets=None, show_traffic=False):
     if isinstance(navigation_result, list):
@@ -54,7 +54,8 @@ def create_navigation_map(navigation_result, targets=None, show_traffic=False):
     if not osm_graph:
         osm_graph, _, _ = get_real_time_graph()
 
-    m = map_utils.create_folium_map(osm_graph, locations=location_coords)
+    filtered_locations = {name: coord for name, coord in location_coords.items() if "Depot" in name or "SPBU" in name}
+    m = map_utils.create_folium_map(osm_graph, locations=filtered_locations)
 
     route_colors = ["#E31B23", "#005DAA", "#5CB85C", "#FF8C00", "#8A2BE2", "#DC143C"]
     all_coords = []

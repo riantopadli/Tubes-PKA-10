@@ -116,15 +116,16 @@ def _render_map(graph: Graph, highlight_routes: List[List[str]]):
     for name, coord in folium_coords.items():
         if "Depot" in name:
             icon_c, icon_n = "black", "industry"
+            folium.Marker(
+                location=coord, popup=name, tooltip=name,
+                icon=folium.Icon(color=icon_c, icon=icon_n, prefix="fa")
+            ).add_to(m)
         elif "SPBU" in name:
             icon_c, icon_n = "red", "gas-pump"
-        else:
-            icon_c, icon_n = "gray", "diamond"
-
-        folium.Marker(
-            location=coord, popup=name, tooltip=name,
-            icon=folium.Icon(color=icon_c, icon=icon_n, prefix="fa")
-        ).add_to(m)
+            folium.Marker(
+                location=coord, popup=name, tooltip=name,
+                icon=folium.Icon(color=icon_c, icon=icon_n, prefix="fa")
+            ).add_to(m)
     return m
 
 
@@ -142,7 +143,6 @@ start_node = "Depot IT Balikpapan"
 
 with st.sidebar:
     st.header("🎛️ Operasional Ritase")
-    navigation_mode = st.radio("Mode Navigasi", ["Simple Graph", "Balikpapan Map"], horizontal=False)
     algo = st.radio("Metode Hitung", ["Dijkstra (Jarak Terpendek)", "A* (Heuristik)"], horizontal=True)
     st.divider()
 
@@ -185,71 +185,69 @@ with st.sidebar:
                 try:
                     algo_name = algo.split(" ")[0]
 
-                    if navigation_mode == "Balikpapan Map":
-                        st.session_state.nav_result = None
-                        st.session_state.info = None
+                    st.session_state.nav_result = None
+                    st.session_state.info = None
 
-                        if len(targets) == 1 or not enable_multi_stop:
-                            if len(targets) == 1:
-                                nav_result = navigation.navigate_real_time_route(
-                                    start_location=start_node,
-                                    destinations=targets,
-                                    algorithm=algo_name,
-                                    return_to_start=round_trip
-                                )
-                                st.session_state.nav_result = nav_result
-                                st.session_state.info = {
-                                    "cost": nav_result['cost'],
-                                    "path": nav_result['readable_path'],
-                                    "scenario": selected_scenario
-                                }
-                            else:
-                                route_results = []
-                                total_cost = 0
-                                combined_paths = []
-                                for target in targets:
-                                    single_result = navigation.navigate_real_time_route(
-                                        start_location=start_node,
-                                        destinations=[target],
-                                        algorithm=algo_name,
-                                        return_to_start=round_trip
-                                    )
-                                    route_results.append(single_result)
-                                    total_cost += single_result['cost']
-                                    combined_paths.extend(single_result['readable_path'])
-
-                                st.session_state.nav_result = route_results
-                                unique_waypoints = []
-                                seen = set()
-                                for path in combined_paths:
-                                    if path not in seen:
-                                        unique_waypoints.append(path)
-                                        seen.add(path)
-                                st.session_state.info = {
-                                    "cost": total_cost,
-                                    "path": unique_waypoints,
-                                    "scenario": selected_scenario
-                                }
-                        else:
-                            nav_result = navigation.navigate_multi_stop_route(
+                    if len(targets) == 1 or not enable_multi_stop:
+                        if len(targets) == 1:
+                            nav_result = navigation.navigate_real_time_route(
                                 start_location=start_node,
                                 destinations=targets,
                                 algorithm=algo_name,
-                                return_to_start=round_trip
+                                return_to_start=round_trip,
+                                vehicle_type="truck"
                             )
                             st.session_state.nav_result = nav_result
                             st.session_state.info = {
                                 "cost": nav_result['cost'],
                                 "path": nav_result['readable_path'],
-                                "scenario": selected_scenario
+                                "scenario": selected_scenario,
+                                "algorithm": algo_name
+                            }
+                        else:
+                            route_results = []
+                            total_cost = 0
+                            combined_paths = []
+                            for target in targets:
+                                single_result = navigation.navigate_real_time_route(
+                                    start_location=start_node,
+                                    destinations=[target],
+                                    algorithm=algo_name,
+                                    return_to_start=round_trip,
+                                    vehicle_type="truck"
+                                )
+                                route_results.append(single_result)
+                                total_cost += single_result['cost']
+                                combined_paths.extend(single_result['readable_path'])
+
+                            st.session_state.nav_result = route_results
+                            unique_waypoints = []
+                            seen = set()
+                            for path in combined_paths:
+                                if path not in seen:
+                                    unique_waypoints.append(path)
+                                    seen.add(path)
+                            st.session_state.info = {
+                                "cost": total_cost,
+                                "path": unique_waypoints,
+                                "scenario": selected_scenario,
+                                "algorithm": algo_name
                             }
                     else:
-                        st.session_state.routes = []
-                        st.session_state.info = None
-
-                        cost, path = compute_multi_stop_route(graph, start_node, targets, algo_name, return_to_start=round_trip)
-                        st.session_state.routes = [path]
-                        st.session_state.info = {"cost": cost, "path": path, "scenario": selected_scenario}
+                        nav_result = navigation.navigate_multi_stop_route(
+                            start_location=start_node,
+                            destinations=targets,
+                            algorithm=algo_name,
+                            return_to_start=round_trip,
+                            vehicle_type="truck"
+                        )
+                        st.session_state.nav_result = nav_result
+                        st.session_state.info = {
+                            "cost": nav_result['cost'],
+                            "path": nav_result['readable_path'],
+                            "scenario": selected_scenario,
+                            "algorithm": algo_name
+                        }
                 except Exception as e: st.error(f"Error: {e}")
         else: st.warning("Pilih tujuan dulu.")
 
@@ -260,22 +258,18 @@ if "info" not in st.session_state: st.session_state.info = None
 if "nav_result" not in st.session_state: st.session_state.nav_result = None
 
 with col1:
-    st.subheader(f"🗺️{navigation_mode}")
+    st.subheader("🗺️ Balikpapan Map")
 
-    if navigation_mode == "Balikpapan Map":
-        if st.session_state.nav_result:
-            nav_map = navigation.create_navigation_map(st.session_state.nav_result, targets=targets)
-            st_folium(nav_map, width="100%", height=550)
-            st.caption("🗺️ **Real-Time Navigation**: Rute mengikuti jalan nyata Balikpapan dari OpenStreetMap")
-        else:
-            st.info("Pilih tujuan dan klik 'Cari Rute' untuk melihat navigasi real-time")
-            osm_graph, _, _ = navigation.get_real_time_graph()
-            empty_map = map_utils.create_folium_map(osm_graph, locations=location_coords)
-            st_folium(empty_map, width="100%", height=550)
+    if st.session_state.nav_result:
+        nav_map = navigation.create_navigation_map(st.session_state.nav_result, targets=targets)
+        st_folium(nav_map, width="100%", height=550)
+        st.caption("🗺️ **Real-Time Navigation**: Rute mengikuti jalan nyata Balikpapan dari OpenStreetMap")
     else:
-        map_viz = _render_map(graph, st.session_state.routes)
-        if map_viz: st_folium(map_viz, width="100%", height=550)
-        st.caption("📊 **Simple Graph**: Representasi graf jaringan distribusi sederhana")
+        st.info("Pilih tujuan dan klik 'Cari Rute' untuk melihat navigasi real-time")
+        osm_graph, _, _ = navigation.get_real_time_graph(vehicle_type="truck")
+        filtered_locations = {name: coord for name, coord in location_coords.items() if "Depot" in name or "SPBU" in name}
+        empty_map = map_utils.create_folium_map(osm_graph, locations=filtered_locations)
+        st_folium(empty_map, width="100%", height=550)
 
 with col2:
     st.subheader("📊 Statistik Ritase")
@@ -290,6 +284,8 @@ with col2:
             st.success(scenario_data[sel_scen]["insight"])
 
         path = res['path']
+
+        st.markdown(f"🔍 **Algoritma**: {res.get('algorithm', 'Unknown')}")
 
         st.markdown(f"🏭 **BERANGKAT**: {path[0]}")
 
