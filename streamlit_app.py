@@ -11,70 +11,70 @@ import map as map_utils
 
 def get_scenario_details():
     return {
-        "Manual (Pilih Sendiri)": {
+        "Manual Pilih Sendiri": {
             "targets": [],
-            "desc": "Mode Manual. Anda memiliki kendali penuh untuk menentukan SPBU mana yang akan dikunjungi oleh Mobil Tangki.",
-            "insight": "Gunakan mode ini untuk simulasi rute bebas sesuai keinginan."
+            "desc": "Mode Bebas. Anda bisa memilih sendiri SPBU mana saja yang ingin dikunjungi.",
+            "insight": "Gunakan mode ini jika ingin mencoba rute buatan sendiri."
         },
 
-        "1. 🚨 Stok Pertalite Kritis (Area Padat)": {
+        "1. Kehabisan Pertalite Area Padat": {
             "targets": ["SPBU Kebun Sayur", "SPBU Karang Anyar", "SPBU Gunung Malang"],
-            "desc": "Kondisi: Stok Pertalite HABIS di area pemukiman padat (Balikpapan Barat & Tengah).",
-            "insight": "💡 **Prioritas:** Segera suplai ke area padat penduduk untuk mencegah kemacetan akibat antrean."
+            "desc": "Kondisi: Pertalite habis di daerah perumahan padat. Banyak angkot dan motor mengantre.",
+            "insight": "Fokus: Mengirim cepat ke area macet agar antrean tidak meluber ke jalan raya."
         },
 
-        "2. 💎 Stok Pertamax Menipis (Area Bisnis)": {
+        "2. Kehabisan Pertamax Area Kota": {
             "targets": ["SPBU Markoni", "SPBU MT Haryono (Damai)", "SPBU Ruhui Rahayu (Dome)"],
-            "desc": "Kondisi: Stok Pertamax menipis di jalur protokol Sudirman dan kawasan perkantoran Dome/Ring Road.",
-            "insight": "💡 **Strategi:** Prioritas jalur bisnis yang memiliki daya beli tinggi."
+            "desc": "Kondisi: Stok Pertamax menipis di pusat kota dan area perkantoran. Mobil pribadi butuh BBM.",
+            "insight": "Strategi: Prioritas ke jalur jalan besar atau protokol tempat banyak mobil lewat."
         },
 
-        "3. 🌗 Suplai Parsial (Radius Dalam Kota)": {
+        "3. Suplai Terbatas Dekat Depot": {
             "targets": ["SPBU Karang Anyar", "SPBU Markoni", "SPBU Km 3 (Soekarno Hatta)"],
-            "desc": "Kondisi: Armada terbatas. Pengiriman hanya dilakukan di radius dekat Integrated Terminal (Depot).",
-            "insight": "💡 **Efisiensi:** Menghindari rute jauh (Kilo 15/Teritip) untuk memaksimalkan jumlah ritase jarak pendek."
+            "desc": "Kondisi: Waktu kerja supir hampir habis. Hanya bisa mengantar ke SPBU yang dekat-dekat saja.",
+            "insight": "Efisiensi: Tidak mengambil rute jauh ke pinggiran kota untuk menghemat waktu."
         },
 
-        "4. 🎲 Order Mendadak (Acak & Terbatas)": {
+        "4. Pesanan Acak Darurat": {
             "targets": "RANDOM_LIMITED",
-            "desc": "Kondisi: Sisa muatan di tangki terbatas. Dispatcher menugaskan pengiriman ke 3 titik acak.",
-            "insight": "💡 **Uji Algoritma:** Menguji fleksibilitas sistem dalam menangani rute yang tidak terduga."
+            "desc": "Kondisi: Ada panggilan darurat dari 3 SPBU secara acak yang stoknya tiba-tiba kosong.",
+            "insight": "Uji Sistem: Melihat apakah aplikasi bisa menangani rute yang tidak terduga."
         },
 
-        "5. 📉 Stok Depot Terbatas (Jalur Industri)": {
+        "5. Prioritas Jalur Industri Solar": {
             "targets": ["SPBU Kariangau (Industri)", "SPBU Km 13", "SPBU Km 15 (Karang Joang)"],
-            "desc": "Kondisi: Prioritas utama diberikan ke Jalur Logistik & Kawasan Industri Kariangau (KIK).",
-            "insight": "💡 **Heavy Duty:** Melayani truk kontainer dan alat berat di poros Samarinda."
+            "desc": "Kondisi: Stok Solar untuk truk logistik menipis. Harus segera dikirim ke jalur luar kota atau Kilo.",
+            "insight": "Rute Lurus: Jalurnya panjang dan lurus, cocok untuk truk besar."
         },
 
-        "6. ✈️ Penyangga Bandara & Wisata": {
-            "targets": ["SPBU COCO Sepinggan", "SPBU Batakan", "SPBU Manggar"],
-            "desc": "Penyaluran ke jalur Timur: Bandara SAMS, Pantai Batakan, hingga Manggar.",
-            "insight": "💡 **Jarak Jauh:** Rute Long Haul menyusuri garis pantai Timur Balikpapan."
+        "6. Jalur Bandara Sepinggan": {
+            "targets": ["SPBU Stalkuda", "SPBU COCO Sepinggan", "SPBU Sepinggan Raya"],
+            "desc": "Kondisi: Menjaga stok di gerbang udara kota Bandara SAMS. Jalur ini harus selalu tersedia.",
+            "insight": "Prioritas: Jalur lebar dan cepat lewat Marsma Iswahyudi, jarang macet parah."
         },
 
-        "7. 🔄 Pengalihan Arus (Via Ring Road)": {
+        "7. Bypass Ring Road Hindari Pusat Kota": {
             "targets": ["SPBU MT Haryono (Damai)", "SPBU Ruhui Rahayu (Dome)", "SPBU Syarifuddin Yoes"],
-            "desc": "Menghindari kemacetan parah di pusat kota (Rapak) dengan menggunakan Jalan Lingkar Selatan.",
-            "insight": "💡 **Waktu vs Jarak:** Jarak tempuh lebih jauh, namun waktu tempuh lebih singkat."
+            "desc": "Kondisi: Pusat kota macet total. Truk menggunakan jalur belakang atau Ring Road untuk menjangkau area Sepinggan.",
+            "insight": "Logis: Memutar lewat jalan Syarifuddin Yoes adalah cara standar menghindari kemacetan kota."
         },
 
-        "8. 🌧️ Kontinjensi Banjir (Jalur Pesisir)": {
-            "targets": ["SPBU Markoni", "SPBU Stalkuda", "SPBU Gunung Malang"],
-            "desc": "Jl. MT Haryono banjir besar. Truk dialihkan lewat jalur pesisir (Jalan Jend. Sudirman).",
-            "insight": "💡 **Safety:** Mengutamakan keselamatan aset daripada kecepatan rute."
+        "8. Banjir MT Haryono Lewat Pesisir": {
+            "targets": ["SPBU Markoni", "SPBU Stalkuda", "SPBU Batakan"],
+            "desc": "Kondisi: Jalan Beller banjir tidak bisa lewat. Truk dipaksa lewat Jalan Jend. Sudirman dan Mulawarman pinggir laut.",
+            "insight": "Safety: Truk tangki dilarang menerobos banjir. Jalur pesisir adalah opsi paling aman meski memutar."
         },
 
-        "9. ⛽ Distribusi Ujung Kota (Remote Area)": {
-            "targets": ["SPBU Teritip", "SPBU Km 15 (Karang Joang)"],
-            "desc": "Membuang sisa muatan terakhir ke titik paling ujung Utara dan Timur.",
-            "insight": "💡 **Navigasi:** Menguji kemampuan algoritma mencari jalan pintas antar wilayah pinggiran."
+        "9. Poros Timur Jauh Manggar Teritip": {
+            "targets": ["SPBU Batakan", "SPBU Manggar", "SPBU Teritip"],
+            "desc": "Kondisi: Pengiriman khusus ke wilayah paling Timur Balikpapan. Sekali jalan untuk mengisi 3 SPBU terjauh.",
+            "insight": "Efisiensi: Mengisi berurutan dari Batakan ke Manggar lalu Teritip. Sangat hemat waktu dibanding bolak-balik."
         },
 
-        "10. ⚠️ Siaga SATGAS (Peak Season)": {
+        "10. Permintaan Melonjak Semua SPBU": {
             "targets": "ALL",
-            "desc": "Kondisi Siaga (Lebaran/Nataru). Permintaan melonjak serentak. Semua armada dikerahkan ke SEMUA titik.",
-            "insight": "💡 **Stress Test:** Uji beban maksimal algoritma Traveling Salesman Problem (TSP)."
+            "desc": "Kondisi: Musim mudik lebaran. Semua SPBU butuh pasokan sekaligus.",
+            "insight": "Uji Berat: Komputer harus berpikir keras mencari rute paling efisien keliling satu kota."
         }
     }
 
