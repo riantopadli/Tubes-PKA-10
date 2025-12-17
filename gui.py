@@ -6,12 +6,27 @@ class MapGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Aplikasi Mapping Pengantar BBM - Graph Map GUI")
+                # ===== JUDUL APLIKASI (Rhadyt)=====
+        title_label = tk.Label(
+            root,
+            text="Graph Jalur Distribusi BBM",
+            font=("Segoe UI", 14, "bold")
+        )
+        title_label.pack(pady=10)
+
         self.graph = create_example_graph()
         self.locations = list(location_coords.keys())
+        # --- TAMBAHAN: ambil batas koordinat (normalisasi)(rhadyt) ---
+        xs = [coord[0] for coord in location_coords.values()]
+        ys = [coord[1] for coord in location_coords.values()]
+
+        self.min_x, self.max_x = min(xs), max(xs)
+        self.min_y, self.max_y = min(ys), max(ys)
+
         # Scaling and canvas size setup
-        self.margin = 50
-        self.size = 600
-        self.scale = 40  # scale factor for coords
+        self.margin = 100
+        self.size = 500
+        self.scale = 1000  # scale factor for coords
         self.canvas = tk.Canvas(root, width=self.size + self.margin*2, height=self.size + self.margin*2, bg="white")
         self.canvas.pack()
 
@@ -34,14 +49,20 @@ class MapGUI:
         
         self.draw_map()
         self.route_line = None
-
+        
     def get_canvas_xy(self, coord):
-        # convert (x, y) to canvas XY
         x, y = coord
-        # agar layout lebih proper, kayak map
-        cx = self.margin + x * self.scale
-        cy = self.margin + (self.size//self.scale - y) * self.scale
+
+    # Normalisasi ke 0–1
+        nx = (x - self.min_x) / (self.max_x - self.min_x)
+        ny = (y - self.min_y) / (self.max_y - self.min_y)
+
+    # Skala ke ukuran canvas
+        cx = self.margin + nx * self.size
+        cy = self.margin + (1 - ny) * self.size  # dibalik supaya tidak terbalik
+
         return cx, cy
+
 
     def draw_map(self):
         self.canvas.delete("all")
@@ -78,13 +99,14 @@ class MapGUI:
                 x1, y1 = self.get_canvas_xy(location_coords[path[i]])
                 x2, y2 = self.get_canvas_xy(location_coords[path[i+1]])
                 self.canvas.create_line(x1, y1, x2, y2, fill="#ff1c1c", width=5)
+
             # Bring nodes to front again
             for node, coord in location_coords.items():
                 x, y = self.get_canvas_xy(coord)
                 color = "blue" if node.startswith("Pom") else ("green" if node == "Depot" else "gray")
                 r = 15
                 self.canvas.create_oval(x-r, y-r, x+r, y+r, fill=color)
-                self.canvas.create_text(x, y, text=node, fill="white")
+                self.canvas.create_text(x, y, text=node, fill="Black")
         # Show popup
         messagebox.showinfo("Hasil Rute", f"Rute terbaik: {path}")
 
