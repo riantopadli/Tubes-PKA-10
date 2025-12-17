@@ -4,20 +4,12 @@ import folium
 from backend import Graph, location_coords
 
 def load_balikpapan_graph(place_name="Balikpapan, Indonesia"):
-    """
-    Download dan load graph jalan raya Balikpapan dari OpenStreetMap.
-    Filter hanya jalan yang bisa dilalui truk tangki.
-    Menggunakan simplify=True agar graph lebih ringan.
-    """
-    # Custom filter untuk jalan yang bisa dilalui truk
-    # Include: primary, secondary, tertiary, unclassified, residential
-    # Exclude: footway, cycleway, path, etc.
+    """Load Balikpapan road network from OpenStreetMap, filtered for truck access."""
     custom_filter = (
         '["highway"]["area"!~"yes"]["access"!~"private"]["highway"!~"abandoned|bridleway|bus_guideway|construction|corridor|cycleway|elevator|footway|path|pedestrian|planned|platform|proposed|raceway|steps|track"]'
         '["highway"!~"abandoned|bridleway|bus_guideway|construction|corridor|cycleway|elevator|footway|path|pedestrian|planned|platform|proposed|raceway|steps|track"]'
     )
 
-    # Filter jalan
     G = ox.graph_from_place(
         place_name,
         network_type="drive",
@@ -25,16 +17,13 @@ def load_balikpapan_graph(place_name="Balikpapan, Indonesia"):
         custom_filter=custom_filter
     )
 
-    # Tambahkan atribut speed dan travel_time
     G = ox.add_edge_speeds(G)
     G = ox.add_edge_travel_times(G)
 
     return G
 
 def convert_osm_to_custom_graph(osm_graph):
-    """
-    Konversi graph OSMnx (MultiDiGraph) ke format class Graph custom kita.
-    """
+    """Convert OSMnx graph to custom Graph format."""
     custom_graph = Graph()
 
     for node_id, data in osm_graph.nodes(data=True):
@@ -65,10 +54,7 @@ def convert_osm_to_custom_graph(osm_graph):
     return custom_graph
 
 def get_nearest_nodes(osm_graph, locations):
-    """
-    Mencari node jalan terdekat untuk setiap lokasi (Depot/SPBU).
-    Returns dict: {'Nama Lokasi': 'Node_ID'}
-    """
+    """Find nearest road nodes for each location. Returns dict: {'Location': 'Node_ID'}"""
     mapped_nodes = {}
     for name, (lon, lat) in locations.items():
         nearest_node = ox.distance.nearest_nodes(osm_graph, lon, lat)
@@ -76,20 +62,13 @@ def get_nearest_nodes(osm_graph, locations):
     return mapped_nodes
 
 def create_folium_map(osm_graph, path_nodes=None, locations=None):
-    """
-    Membuat peta Folium.
-    - osm_graph: Graph OSMnx asli (untuk plotting geometri jalan jika perlu,
-      tapi agar ringan kita pakai TileLayer standar saja).
-    - path_nodes: List of node IDs (str) yang membentuk rute.
-    - locations: Dict koordinat asli {'Nama': (lon, lat)} untuk marker.
-    """
+    """Create Folium map with markers and route visualization."""
 
     center_lat = -1.25
     center_lon = 116.83
 
     m = folium.Map(location=[center_lat, center_lon], zoom_start=13)
 
-    # 1. Gambar Marker Lokasi Penting (Depot/SPBU)
     if locations:
         for name, (lon, lat) in locations.items():
             color = "green" if "Depot" in name else "blue"
@@ -101,7 +80,6 @@ def create_folium_map(osm_graph, path_nodes=None, locations=None):
                 icon=icon
             ).add_to(m)
 
-    # 2. Gambar Rute
     if path_nodes and len(path_nodes) > 1:
         route_coords = []
         for node_id in path_nodes:
@@ -110,7 +88,6 @@ def create_folium_map(osm_graph, path_nodes=None, locations=None):
                 node_data = osm_graph.nodes[nid]
                 route_coords.append((node_data['y'], node_data['x']))
 
-        # Gambar garis rute
         folium.PolyLine(
             route_coords,
             color="red",

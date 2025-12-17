@@ -289,7 +289,6 @@ with col2:
         if sel_scen in scenario_data:
             st.success(scenario_data[sel_scen]["insight"])
 
-        st.markdown("##### 📍 Timeline Perjalanan")
         path = res['path']
 
         st.markdown(f"🏭 **BERANGKAT**: {path[0]}")

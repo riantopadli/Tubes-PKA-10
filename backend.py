@@ -4,7 +4,6 @@ import itertools
 from itertools import permutations
 from typing import Dict, List, Optional, Set, Tuple
 
-# --- KELAS GRAPH & ALGORITMA ---
 class Graph:
     def __init__(self, average_speed_kmph: float = 30.0):
         self.nodes: Set[str] = set()
@@ -79,7 +78,6 @@ def haversine_km(coord1: Tuple[float, float], coord2: Tuple[float, float]) -> fl
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
     return 6371.0 * c
 
-# --- UPDATE DATA LENGKAP BALIKPAPAN (VERSI FINAL) ---
 location_coords: Dict[str, Tuple[float, float]] = {
     # IT (Integrated Terminal)
     "Depot IT Balikpapan": (116.824915, -1.252753),
