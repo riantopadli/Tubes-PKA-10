@@ -5,13 +5,16 @@ from backend import Graph, location_coords
 
 def load_balikpapan_graph(place_name="Balikpapan, Indonesia", vehicle_type="car"):
     """Load Balikpapan road network from OpenStreetMap, filtered based on vehicle type."""
-    if vehicle_type.lower() == "truck":
-        network_type = "drive"
+    if vehicle_type.lower() in ["truck_5kl", "truck_8kl"]:
+        custom_filter = (
+            '["highway"~"motorway|trunk|primary|secondary|tertiary|unclassified"]["area"!~"yes"]["access"!~"private"]'
+            '["highway"!~"residential|living_street|service|abandoned|bridleway|bus_guideway|construction|corridor|cycleway|elevator|footway|path|pedestrian|planned|platform|proposed|raceway|steps|track"]'
+        )
+    elif vehicle_type.lower() in ["truck_16kl", "truck_24kl"]:
         custom_filter = (
             '["highway"~"motorway|trunk|primary|secondary"]["area"!~"yes"]["access"!~"private"]["highway"!~"residential|living_street|unclassified|service"]'
         )
     else:
-        network_type = "drive"
         custom_filter = (
             '["highway"]["area"!~"yes"]["access"!~"private"]["highway"!~"abandoned|bridleway|bus_guideway|construction|corridor|cycleway|elevator|footway|path|pedestrian|planned|platform|proposed|raceway|steps|track"]'
             '["highway"!~"abandoned|bridleway|bus_guideway|construction|corridor|cycleway|elevator|footway|path|pedestrian|planned|platform|proposed|raceway|steps|track"]'
@@ -19,8 +22,8 @@ def load_balikpapan_graph(place_name="Balikpapan, Indonesia", vehicle_type="car"
 
     G = ox.graph_from_place(
         place_name,
-        network_type=network_type,
-        simplify=False,  # More detailed but smaller graph
+        network_type="drive",
+        simplify=False,
         custom_filter=custom_filter
     )
 
@@ -68,7 +71,7 @@ def get_nearest_nodes(osm_graph, locations):
         mapped_nodes[name] = str(nearest_node)
     return mapped_nodes
 
-def create_folium_map(osm_graph, path_nodes=None, locations=None):
+def create_folium_map(osm_graph, path_nodes=None, locations=None, targets=None):
     """Create Folium map with markers and route visualization."""
 
     center_lat = -1.25
@@ -78,14 +81,33 @@ def create_folium_map(osm_graph, path_nodes=None, locations=None):
 
     if locations:
         for name, (lon, lat) in locations.items():
-            color = "green" if "Depot" in name else "blue"
-            icon = folium.Icon(color=color, icon="gas-pump", prefix="fa")
-            folium.Marker(
-                location=[lat, lon],
-                popup=name,
-                tooltip=name,
-                icon=icon
-            ).add_to(m)
+            if targets and name in targets:
+                color = "orange"
+                icon = folium.Icon(color=color, icon="gas-pump", prefix="fa")
+                folium.Marker(
+                    location=[lat, lon],
+                    popup=f"{name} (Dituju)",
+                    tooltip=f"{name} - Titik Bongkar BBM",
+                    icon=icon
+                ).add_to(m)
+                folium.CircleMarker(
+                    location=[lat, lon],
+                    radius=15,
+                    color="orange",
+                    fill=True,
+                    fill_color="orange",
+                    fill_opacity=0.3,
+                    popup=f"{name}"
+                ).add_to(m)
+            else:
+                color = "green" if "Depot" in name else "blue"
+                icon = folium.Icon(color=color, icon="gas-pump", prefix="fa")
+                folium.Marker(
+                    location=[lat, lon],
+                    popup=name,
+                    tooltip=name,
+                    icon=icon
+                ).add_to(m)
 
     if path_nodes and len(path_nodes) > 1:
         route_coords = []

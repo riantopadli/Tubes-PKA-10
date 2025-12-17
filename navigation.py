@@ -1,7 +1,39 @@
 import streamlit as st
 import folium
 import map as map_utils
-from backend import Graph, location_coords, compute_multi_stop_route
+from typing import List, Tuple
+from backend import Graph, location_coords, compute_multi_stop_route, haversine_km
+
+def calculate_route_distances(osm_graph, path: List[str]) -> Tuple[float, List[float]]:
+    """Calculate total distance and segment distances for a route path."""
+    if len(path) < 2:
+        return 0.0, []
+
+    import networkx as nx
+
+    total_distance = 0.0
+    segment_distances = []
+
+    for i in range(len(path) - 1):
+        from_node_id = int(path[i])
+        to_node_id = int(path[i + 1])
+
+        try:
+            distance_m = nx.shortest_path_length(osm_graph, from_node_id, to_node_id, weight='length')
+            distance_km = distance_m / 1000.0
+            segment_distances.append(distance_km)
+            total_distance += distance_km
+        except (nx.NetworkXNoPath, nx.NodeNotFound):
+            if osm_graph.has_node(from_node_id) and osm_graph.has_node(to_node_id):
+                from_coord = (osm_graph.nodes[from_node_id]['y'], osm_graph.nodes[from_node_id]['x'])
+                to_coord = (osm_graph.nodes[to_node_id]['y'], osm_graph.nodes[to_node_id]['x'])
+                distance_km = haversine_km(from_coord, to_coord)
+                segment_distances.append(distance_km)
+                total_distance += distance_km
+            else:
+                segment_distances.append(0.0)
+
+    return total_distance, segment_distances
 
 @st.cache_resource(show_spinner=True)
 def get_real_time_graph(vehicle_type="car"):
@@ -32,12 +64,16 @@ def navigate_real_time_route(start_location, destinations, algorithm="Dijkstra",
     id_to_name = {v: k for k, v in mapped_nodes.items()}
     readable_path = [id_to_name.get(node_id) for node_id in path if node_id in id_to_name]
 
+    total_distance, segment_distances = calculate_route_distances(osm_graph, path)
+
     return {
         'cost': cost,
         'path': path,
         'readable_path': readable_path,
         'osm_graph': osm_graph,
-        'mapped_nodes': mapped_nodes
+        'mapped_nodes': mapped_nodes,
+        'total_distance': total_distance,
+        'segment_distances': segment_distances
     }
 
 def navigate_multi_stop_route(start_location, destinations, algorithm="Dijkstra", return_to_start=False, vehicle_type="car"):
@@ -55,7 +91,7 @@ def create_navigation_map(navigation_result, targets=None, show_traffic=False):
         osm_graph, _, _ = get_real_time_graph()
 
     filtered_locations = {name: coord for name, coord in location_coords.items() if "Depot" in name or "SPBU" in name}
-    m = map_utils.create_folium_map(osm_graph, locations=filtered_locations)
+    m = map_utils.create_folium_map(osm_graph, locations=filtered_locations, targets=targets)
 
     route_colors = ["#E31B23", "#005DAA", "#5CB85C", "#FF8C00", "#8A2BE2", "#DC143C"]
     all_coords = []
@@ -110,6 +146,82 @@ def create_navigation_map(navigation_result, targets=None, show_traffic=False):
             pass
 
     return m
+
+def generate_route_statistics(navigation_result, targets=None):
+    """Generate detailed route statistics table data."""
+    readable_path = navigation_result['readable_path']
+    path = navigation_result['path']
+    total_distance = navigation_result.get('total_distance', 0.0)
+    segment_distances = navigation_result.get('segment_distances', [])
+    travel_time_only = navigation_result['cost']
+
+    LOADING_TIME_MIN = 15
+    FUEL_CONSUMPTION_L_PER_100KM = 25
+    AVG_SPEED_KMH = 30.0
+
+    id_to_name = {v: k for k, v in navigation_result['mapped_nodes'].items()}
+
+    cumulative_distances = []
+    current_distance = 0.0
+
+    for i, node_id in enumerate(path):
+        location_name = id_to_name.get(node_id)
+        if location_name and location_name in readable_path:
+            cumulative_distances.append(current_distance)
+        if i < len(segment_distances):
+            current_distance += segment_distances[i]
+
+    while len(cumulative_distances) < len(readable_path):
+        cumulative_distances.append(total_distance)
+
+    table_data = []
+    cumulative_time = 0.0
+
+    for i, location in enumerate(readable_path):
+        segment_distance = 0.0 if i == 0 else cumulative_distances[i] - cumulative_distances[i-1]
+        segment_time = (segment_distance / AVG_SPEED_KMH) * 60 if segment_distance > 0 else 0.0
+
+        row = {
+            'Urutan': i + 1,
+            'Lokasi': location,
+            'Jarak_dari_Sebelumnya_km': segment_distance,
+            'Waktu_Tempuh_min': segment_time,
+            'Aktivitas': '',
+            'Estimasi_Tiba': ''
+        }
+
+        if i == 0:
+            row['Aktivitas'] = 'Berangkat dari Depot'
+        elif location in (targets or []):
+            row['Aktivitas'] = 'Bongkar BBM'
+            row['Waktu_Tempuh_min'] += LOADING_TIME_MIN
+        elif i == len(readable_path) - 1 and location == readable_path[0]:
+            row['Aktivitas'] = 'Tiba kembali di Depot'
+        elif i == len(readable_path) - 1:
+            row['Aktivitas'] = 'Tiba di Tujuan Akhir'
+        else:
+            row['Aktivitas'] = 'Perjalanan'
+
+        cumulative_time += row['Waktu_Tempuh_min']
+        row['Estimasi_Tiba'] = f"{cumulative_time:.1f}"
+
+        table_data.append(row)
+
+    num_stops = len([t for t in targets or []])
+    total_loading_time = LOADING_TIME_MIN * num_stops
+    total_operational_time = travel_time_only + total_loading_time
+
+    estimated_fuel_consumption = (total_distance / 100) * FUEL_CONSUMPTION_L_PER_100KM
+
+    summary = {
+        'total_distance_km': total_distance,
+        'total_time_min': total_operational_time,
+        'estimated_fuel_liters': estimated_fuel_consumption,
+        'number_of_stops': num_stops,
+        'table_data': table_data
+    }
+
+    return summary
 
 def get_route_summary(navigation_result):
     return {

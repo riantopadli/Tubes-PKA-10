@@ -92,7 +92,7 @@ location_coords: Dict[str, Tuple[float, float]] = {
     "SPBU Kebun Sayur": (116.82258429525132, -1.234234503558596),
     "SPBU Gunung Malang": (116.8462635251558, -1.2669178826321115),
     "SPBU Gunung Guntur": (116.846764, -1.251218),
-    "SPBU Markoni": (116.85953763227289, -1.2647298557158149),
+
     "SPBU MT Haryono (Damai)": (116.8595571, -1.2649013),
     "SPBU Ruhui Rahayu (Dome)": (116.87251674242106, -1.242597870423533),
     "SPBU Stalkuda": (116.86261315365263, -1.2748675591027794),
@@ -128,8 +128,7 @@ roads: List[Tuple[str, str, float]] = [
     ("SPBU Km 13", "SPBU Km 15 (Karang Joang)", 3.0),
     ("Simpang Gunung Sari", "SPBU Gunung Malang", 3.0),
     ("SPBU Gunung Malang", "Simpang BP/Sudirman", 2.0),
-    ("Simpang BP/Sudirman", "SPBU Markoni", 3.0),
-    ("SPBU Markoni", "SPBU Stalkuda", 4.0),
+    ("Simpang BP/Sudirman", "SPBU Stalkuda", 4.0),
     ("SPBU Stalkuda", "Simpang Bandara Sepinggan", 7.0),
     ("Simpang Bandara Sepinggan", "SPBU COCO Sepinggan", 2.0),
     ("SPBU COCO Sepinggan", "SPBU Batakan", 7.0),

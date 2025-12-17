@@ -24,13 +24,13 @@ def get_scenario_details():
         },
 
         "2. 💎 Stok Pertamax Menipis (Area Bisnis)": {
-            "targets": ["SPBU Markoni", "SPBU MT Haryono (Damai)", "SPBU Ruhui Rahayu (Dome)"],
+            "targets": ["SPBU MT Haryono (Damai)", "SPBU Ruhui Rahayu (Dome)", "SPBU Stalkuda"],
             "desc": "Kondisi: Stok Pertamax menipis di jalur protokol Sudirman dan kawasan perkantoran Dome/Ring Road.",
             "insight": "💡 **Strategi:** Prioritas jalur bisnis yang memiliki daya beli tinggi."
         },
 
         "3. 🌗 Suplai Parsial (Radius Dalam Kota)": {
-            "targets": ["SPBU Karang Anyar", "SPBU Markoni", "SPBU Km 3 (Soekarno Hatta)"],
+            "targets": ["SPBU Karang Anyar", "SPBU Gunung Malang", "SPBU Km 3 (Soekarno Hatta)"],
             "desc": "Kondisi: Armada terbatas. Pengiriman hanya dilakukan di radius dekat Integrated Terminal (Depot).",
             "insight": "💡 **Efisiensi:** Menghindari rute jauh (Kilo 15/Teritip) untuk memaksimalkan jumlah ritase jarak pendek."
         },
@@ -60,7 +60,7 @@ def get_scenario_details():
         },
 
         "8. 🌧️ Kontinjensi Banjir (Jalur Pesisir)": {
-            "targets": ["SPBU Markoni", "SPBU Stalkuda", "SPBU Gunung Malang"],
+            "targets": ["SPBU Stalkuda", "SPBU Gunung Malang", "SPBU Gunung Guntur"],
             "desc": "Jl. MT Haryono banjir besar. Truk dialihkan lewat jalur pesisir (Jalan Jend. Sudirman).",
             "insight": "💡 **Safety:** Mengutamakan keselamatan aset daripada kecepatan rute."
         },
@@ -144,6 +144,13 @@ start_node = "Depot IT Balikpapan"
 with st.sidebar:
     st.header("🎛️ Operasional Ritase")
     algo = st.radio("Metode Hitung", ["Dijkstra (Jarak Terpendek)", "A* (Heuristik)"], horizontal=True)
+
+    truck_capacity = st.selectbox(
+        "Kapasitas Truk:",
+        ["5 KL", "8 KL", "16 KL", "24 KL"],
+        help="5 KL & 8 KL: Akses jalan 2 arah, tidak bisa gang/perumahan\n16 KL & 24 KL: Hanya highway"
+    )
+
     st.divider()
 
     scenario_data = get_scenario_details()
@@ -185,6 +192,13 @@ with st.sidebar:
                 try:
                     algo_name = algo.split(" ")[0]
 
+                    if truck_capacity in ["5 KL", "8 KL"]:
+                        vehicle_type = f"truck_{truck_capacity.lower().replace(' ', '')}"
+                    elif truck_capacity in ["16 KL", "24 KL"]:
+                        vehicle_type = f"truck_{truck_capacity.lower().replace(' ', '')}"
+                    else:
+                        vehicle_type = "truck"
+
                     st.session_state.nav_result = None
                     st.session_state.info = None
 
@@ -195,7 +209,7 @@ with st.sidebar:
                                 destinations=targets,
                                 algorithm=algo_name,
                                 return_to_start=round_trip,
-                                vehicle_type="truck"
+                                vehicle_type=vehicle_type
                             )
                             st.session_state.nav_result = nav_result
                             st.session_state.info = {
@@ -214,7 +228,7 @@ with st.sidebar:
                                     destinations=[target],
                                     algorithm=algo_name,
                                     return_to_start=round_trip,
-                                    vehicle_type="truck"
+                                    vehicle_type=vehicle_type
                                 )
                                 route_results.append(single_result)
                                 total_cost += single_result['cost']
@@ -239,7 +253,7 @@ with st.sidebar:
                             destinations=targets,
                             algorithm=algo_name,
                             return_to_start=round_trip,
-                            vehicle_type="truck"
+                            vehicle_type=vehicle_type
                         )
                         st.session_state.nav_result = nav_result
                         st.session_state.info = {
@@ -263,37 +277,102 @@ with col1:
     if st.session_state.nav_result:
         nav_map = navigation.create_navigation_map(st.session_state.nav_result, targets=targets)
         st_folium(nav_map, width="100%", height=550)
-        st.caption("🗺️ **Real-Time Navigation**: Rute mengikuti jalan nyata Balikpapan dari OpenStreetMap")
+        st.caption("🗺️ **Real-Time Navigation!**")
     else:
         st.info("Pilih tujuan dan klik 'Cari Rute' untuk melihat navigasi real-time")
         osm_graph, _, _ = navigation.get_real_time_graph(vehicle_type="truck")
         filtered_locations = {name: coord for name, coord in location_coords.items() if "Depot" in name or "SPBU" in name}
-        empty_map = map_utils.create_folium_map(osm_graph, locations=filtered_locations)
+        empty_map = map_utils.create_folium_map(osm_graph, locations=filtered_locations, targets=targets)
         st_folium(empty_map, width="100%", height=550)
 
 with col2:
     st.subheader("📊 Statistik Ritase")
     res = st.session_state.info
     if res:
-        kpi1, kpi2 = st.columns(2)
-        kpi1.metric("Est. Waktu Putaran", f"{res['cost']:.1f} min")
-        kpi2.metric("Titik Drop", len(targets))
+        if isinstance(st.session_state.nav_result, list):
+            combined_stats = {
+                'total_distance_km': 0.0,
+                'total_time_min': 0.0,
+                'estimated_fuel_liters': 0.0,
+                'number_of_stops': 0,
+                'table_data': []
+            }
+
+            for i, route_result in enumerate(st.session_state.nav_result):
+                route_stats = navigation.generate_route_statistics(route_result, targets=[route_result['readable_path'][-2]] if len(route_result['readable_path']) > 1 else [])
+
+                combined_stats['total_distance_km'] += route_stats['total_distance_km']
+                combined_stats['total_time_min'] += route_stats['total_time_min']
+                combined_stats['estimated_fuel_liters'] += route_stats['estimated_fuel_liters']
+                combined_stats['number_of_stops'] += route_stats['number_of_stops']
+
+                if i > 0:
+                    combined_stats['table_data'].append({
+                        'Urutan': '',
+                        'Lokasi': f'--- Rute {i+1} ---',
+                        'Jarak_dari_Sebelumnya_km': 0.0,
+                        'Waktu_Tempuh_min': 0.0,
+                        'Aktivitas': '',
+                        'Estimasi_Tiba': ''
+                    })
+
+                for row in route_stats['table_data']:
+                    row_copy = row.copy()
+                    combined_stats['table_data'].append(row_copy)
+
+            route_stats = combined_stats
+        else:
+            route_stats = navigation.generate_route_statistics(st.session_state.nav_result, targets=targets)
+
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.metric("Total Jarak Tempuh", f"{route_stats['total_distance_km']:.1f} km")
+            st.metric("Estimasi BBM", f"{route_stats['estimated_fuel_liters']:.1f} L")
+        with col_b:
+            st.metric("Total Waktu Operasional", f"{route_stats['total_time_min']:.1f} min")
+            st.metric("Jumlah Titik Drop", route_stats['number_of_stops'])
 
         sel_scen = res.get("scenario", "Manual")
         if sel_scen in scenario_data:
             st.success(scenario_data[sel_scen]["insight"])
 
-        path = res['path']
-
         st.markdown(f"🔍 **Algoritma**: {res.get('algorithm', 'Unknown')}")
 
-        st.markdown(f"🏭 **BERANGKAT**: {path[0]}")
+        st.markdown("### Detail Perjalanan")
+        import pandas as pd
+        df = pd.DataFrame(route_stats['table_data'])
 
-        targets_in_path = [node for node in path[1:-1] if node in targets]
-        for target in targets_in_path:
-            st.markdown(f"⛽ **BONGKAR BBM**: {target}")
+        df = df.round({
+            'Jarak_dari_Sebelumnya_km': 2,
+            'Waktu_Tempuh_min': 1
+        })
 
-        if len(path) > 1:
-            st.markdown(f"🏁 **TIBA**: {path[-1]}")
+        df = df.rename(columns={
+            'Urutan': 'No.',
+            'Lokasi': 'Lokasi',
+            'Jarak_dari_Sebelumnya_km': 'Jarak (km)',
+            'Waktu_Tempuh_min': 'Waktu (min)',
+            'Aktivitas': 'Aktivitas',
+            'Estimasi_Tiba': 'ETA (min)'
+        })
+
+        total_distance = df['Jarak (km)'].sum()
+        total_time = df['Waktu (min)'].sum()
+
+        total_row = pd.DataFrame({
+            'No.': ['TOTAL'],
+            'Lokasi': ['-'],
+            'Jarak (km)': [f'{total_distance:.2f} km'],
+            'Waktu (min)': [f'{total_time:.1f} min'],
+            'Aktivitas': ['-'],
+            'ETA (min)': ['-']
+        })
+
+        df_with_total = pd.concat([df, total_row], ignore_index=True)
+
+        st.dataframe(df_with_total, use_container_width=True, hide_index=True)
+
+        st.caption(f"**Total Jarak:** {total_distance:.2f} km | **Total Waktu:** {total_time:.1f} min")
+
     else:
-        st.info("Pilih skenario di panel kiri.")
+        st.info("Pilih skenario di panel kiri dan klik 'Kalkulasi Rute'.")
