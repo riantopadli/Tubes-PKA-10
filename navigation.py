@@ -159,6 +159,9 @@ def generate_route_statistics(navigation_result, targets=None):
     FUEL_CONSUMPTION_L_PER_100KM = 25
     AVG_SPEED_KMH = 30.0
 
+    # Convert total distance (km) to travel time (minutes)
+    travel_time_only = (total_distance / AVG_SPEED_KMH) * 60
+
     id_to_name = {v: k for k, v in navigation_result['mapped_nodes'].items()}
 
     cumulative_distances = []
