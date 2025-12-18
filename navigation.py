@@ -212,7 +212,9 @@ def generate_route_statistics(navigation_result, targets=None):
 
     num_stops = len([t for t in targets or []])
     total_loading_time = LOADING_TIME_MIN * num_stops
-    total_operational_time = travel_time_only + total_loading_time
+
+    # Calculate total operational time directly from table data to avoid floating point discrepancies
+    total_operational_time = sum(row['Waktu_Tempuh_min'] for row in table_data)
 
     estimated_fuel_consumption = (total_distance / 100) * FUEL_CONSUMPTION_L_PER_100KM
 

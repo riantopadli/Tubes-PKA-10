@@ -357,7 +357,8 @@ with col2:
         })
 
         total_distance = df['Jarak (km)'].sum()
-        total_time = df['Waktu (min)'].sum()
+
+        total_time = route_stats['total_time_min']
 
         total_row = pd.DataFrame({
             'No.': ['TOTAL'],
